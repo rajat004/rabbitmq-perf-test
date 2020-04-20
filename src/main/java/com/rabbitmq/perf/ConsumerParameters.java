@@ -43,6 +43,7 @@ public class ConsumerParameters {
     private ExecutorService executorService;
     private boolean polling;
     private boolean nack = false;
+    private String randomConsumerLatencyInMicroSeconds;
 
     private int pollingInterval;
 
@@ -208,5 +209,14 @@ public class ConsumerParameters {
 
     public Map<String, Object> getConsumerArguments() {
         return consumerArguments;
+    }
+
+    public String getRandomConsumerLatencyInMicroSeconds() {
+        return randomConsumerLatencyInMicroSeconds;
+    }
+
+    public ConsumerParameters setRandomConsumerLatencyInMicroSeconds(String randomConsumerLatencyInMicroSeconds) {
+        this.randomConsumerLatencyInMicroSeconds = randomConsumerLatencyInMicroSeconds;
+        return this;
     }
 }

@@ -25,6 +25,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -92,15 +93,10 @@ public class Consumer extends AgentBase implements Runnable {
 
         this.queueNames.set(new ArrayList<>(parameters.getQueueNames()));
         this.initialQueueNames = new ArrayList<>(parameters.getQueueNames());
+        this.consumerLatency =
+                generateConsumerLatency(parameters.getConsumerLatencyInMicroSeconds(),
+                        parameters.getRandomConsumerLatencyInMicroSeconds());
 
-        int consumerLatencyInMicroSeconds = parameters.getConsumerLatencyInMicroSeconds();
-        if (consumerLatencyInMicroSeconds <= 0) {
-            this.consumerLatency = new NoWaitConsumerLatency();
-        } else if (consumerLatencyInMicroSeconds >= 1000) {
-            this.consumerLatency = new ThreadSleepConsumerLatency(consumerLatencyInMicroSeconds / 1000);
-        } else {
-            this.consumerLatency = new BusyWaitConsumerLatency(consumerLatencyInMicroSeconds * 1000);
-        }
 
         if (timestampProvider.isTimestampInHeader()) {
             this.timestampExtractor = (properties, body) -> {
@@ -400,13 +396,15 @@ public class Consumer extends AgentBase implements Runnable {
 
         private final int waitTime;
 
-        private ThreadSleepConsumerLatency(int waitTime) {
+
+        public ThreadSleepConsumerLatency(int waitTime) {
             this.waitTime = waitTime;
         }
 
         @Override
         public boolean simulateLatency() {
             try {
+
                 Thread.sleep(waitTime);
                 return true;
             } catch (InterruptedException e) {
@@ -421,14 +419,15 @@ public class Consumer extends AgentBase implements Runnable {
 
         private final long delay;
 
-        private BusyWaitConsumerLatency(long delay) {
+        public BusyWaitConsumerLatency(long delay) {
             this.delay = delay;
         }
 
         @Override
         public boolean simulateLatency() {
             long start = System.nanoTime();
-            while(System.nanoTime() - start < delay);
+            while (System.nanoTime() - start < delay)
+                ;
             return true;
         }
     }
@@ -439,5 +438,37 @@ public class Consumer extends AgentBase implements Runnable {
         void apply(Channel channel, Envelope envelope, boolean multiple) throws IOException;
 
     }
+
+    private ConsumerLatency generateConsumerLatency(int consumerLatencyInMicroSeconds,
+                                                    String randomConsumerLatencyInMicroSecondsSeconds) {
+        int randomConsumerLatencyInMicroSeconds =
+                getRandomConsumerLatencyInMicroseconds(randomConsumerLatencyInMicroSecondsSeconds);
+        consumerLatencyInMicroSeconds =
+                randomConsumerLatencyInMicroSeconds != -1 ? randomConsumerLatencyInMicroSeconds :
+                        consumerLatencyInMicroSeconds;
+        if (consumerLatencyInMicroSeconds <= 0) {
+            return new NoWaitConsumerLatency();
+        } else if (consumerLatencyInMicroSeconds >= 1000) {
+            return new ThreadSleepConsumerLatency(consumerLatencyInMicroSeconds / 1000);
+        } else {
+            return new BusyWaitConsumerLatency(consumerLatencyInMicroSeconds * 1000);
+        }
+    }
+
+
+    private int getRandomConsumerLatencyInMicroseconds(String randomConsumerLatencyInMicroSecondsSeconds){
+        if (randomConsumerLatencyInMicroSecondsSeconds != null && !randomConsumerLatencyInMicroSecondsSeconds.isEmpty()){
+            String [] latencyContext = randomConsumerLatencyInMicroSecondsSeconds.split("_");
+            try{
+                return ThreadLocalRandom.current().nextInt(Integer.valueOf(latencyContext[0]), Integer.valueOf(latencyContext[1]));
+            }catch (Exception ex){
+                LOGGER.error("Unable to evaluate random consumer latency ");
+            }
+        }
+        return -1;
+    }
+
+
+
 
 }

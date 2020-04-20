@@ -24,18 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -63,6 +53,7 @@ public class Producer extends AgentBase implements Runnable, ReturnListener,
     public static final String APP_ID_PROPERTY = "appId";
     public static final String CLUSTER_ID_PROPERTY = "clusterId";
     public static final String TIMESTAMP_HEADER = TIMESTAMP_PROPERTY;
+    static final String RANDOM_PROPERTY_IDENTIFIER = "random-headers";
     static final String STOP_REASON_PRODUCER_MESSAGE_LIMIT = "Producer reached message limit";
     static final String STOP_REASON_PRODUCER_THREAD_INTERRUPTED = "Producer thread interrupted";
     static final String STOP_REASON_ERROR_IN_PRODUCER = "Error in producer";
@@ -220,8 +211,10 @@ public class Producer extends AgentBase implements Runnable, ReturnListener,
                     Map<String, Object> newHeaders = new HashMap<>();
                     newHeaders.putAll(existingHeaders);
                     newHeaders.putAll(headers);
+                    populateRandomHeaders(newHeaders);
                     builder = builder.headers(newHeaders);
                 } else {
+                    populateRandomHeaders(headers);
                     builder = builder.headers(headers);
                 }
                 return builder;
@@ -229,6 +222,30 @@ public class Producer extends AgentBase implements Runnable, ReturnListener,
         }
 
         return builderProcessor;
+    }
+
+    private static void populateRandomHeaders(Map<String, Object> header) {
+        if (header != null && !header.isEmpty()) {
+            for (Map.Entry<String, Object> entry: header.entrySet()) {
+                if (RANDOM_PROPERTY_IDENTIFIER.equals(entry.getKey()) && entry.getValue() != null) {
+                    String[] randomHeaderRequest = entry.getValue().toString().split(",");
+                    for (String headerRequest: randomHeaderRequest) {
+                        String[] headerContext = headerRequest.split("_");
+                        try {
+                            header.put(headerContext[0], getRandomNumberForRandomizedParameter(headerContext[1],
+                                    headerContext[2]));
+                        } catch (Exception ex) {
+                            LOGGER.error("Unable to populate random header for message property exception is" + ex.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static String getRandomNumberForRandomizedParameter(String lowerBoundString, String upperBoundString) {
+        return String.valueOf(ThreadLocalRandom.current().nextInt(Integer.parseInt(lowerBoundString),
+                Integer.parseInt(upperBoundString)));
     }
 
     private static final Collection<String> MESSAGE_PROPERTIES_KEYS = Arrays.asList(
@@ -538,6 +555,7 @@ public class Producer extends AgentBase implements Runnable, ReturnListener,
                 unconfirmed.put(channel.getNextPublishSeqNo(), messageEnvelope.getTime());
             }
         }
+        System.out.println("delay-header-param-value" + messageProperties.getHeaders().get("x-delay"));
         channel.basicPublish(exchangeName, routingKeyGenerator.get(),
                              mandatory, false,
                              messageProperties,

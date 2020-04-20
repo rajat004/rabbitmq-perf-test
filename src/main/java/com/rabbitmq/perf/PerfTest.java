@@ -124,6 +124,8 @@ public class PerfTest {
             boolean saslExternal     = hasOption(cmd, "se");
             String queueArgs         = strArg(cmd, "qa", null);
             int consumerLatencyInMicroseconds = intArg(cmd, 'L', 0);
+            // introducing random latency
+            String randomConsumerLatencyInMicroseconds = strArg(cmd, "rl", null);
             int heartbeatSenderThreads = intArg(cmd, "hst", -1);
             String messageProperties = strArg(cmd, "mp", null);
             int routingKeyCacheSize  = intArg(cmd, "rkcs", 0);
@@ -299,6 +301,7 @@ public class PerfTest {
             p.setBodyContentType(       bodyContentType);
             p.setQueueArguments(convertKeyValuePairs(queueArgs));
             p.setConsumerLatencyInMicroseconds(consumerLatencyInMicroseconds);
+            p.setRandomConsumerLatencyInMicroseconds(randomConsumerLatencyInMicroseconds);
             p.setQueuePattern(queuePattern);
             p.setQueueSequenceFrom(from);
             p.setQueueSequenceTo(to);
@@ -322,6 +325,7 @@ public class PerfTest {
             p.setBodyFieldCount(bodyFieldCount);
             p.setBodyCount(bodyCount);
             p.setConsumerArguments(convertKeyValuePairs(consumerArgs));
+
 
             ConcurrentMap<String, Integer> completionReasons = new ConcurrentHashMap<>();
 
@@ -558,6 +562,7 @@ public class PerfTest {
         options.addOption(new Option("qa", "queue-args",            true, "queue arguments as key/value pairs, separated by commas, "
                                                                                                     + "e.g. x-max-length=10"));
         options.addOption(new Option("L", "consumer-latency",       true, "consumer latency in microseconds"));
+        options.addOption(new Option("rl", "random-consumer-latency",       true, "random consumer latency in microseconds"));
 
         options.addOption(new Option("udsc", "use-default-ssl-context", false, "use JVM default SSL context"));
         options.addOption(new Option("se", "sasl-external", false, "use SASL EXTERNAL authentication, default is false. " +

@@ -78,6 +78,7 @@ public class MulticastParams {
     private Map<String, Object> queueArguments = null;
 
     private int consumerLatencyInMicroseconds = 0;
+    private String randomConsumerLatencyInMicroseconds = null;
 
     private String queuePattern = null;
     private int queueSequenceFrom = -1;
@@ -517,6 +518,7 @@ public class MulticastParams {
                 .setPollingInterval(this.pollingInterval)
                 .setNack(this.nack)
                 .setConsumerArguments(this.consumerArguments)
+                .setRandomConsumerLatencyInMicroSeconds(this.randomConsumerLatencyInMicroseconds)
         );
         this.topologyHandler.next();
         return consumer;
@@ -602,6 +604,14 @@ public class MulticastParams {
 
     public void setProducerSchedulerThreadCount(int producerSchedulerThreadCount) {
         this.producerSchedulerThreadCount = producerSchedulerThreadCount;
+    }
+
+    public String getRandomConsumerLatencyInMicroseconds() {
+        return randomConsumerLatencyInMicroseconds;
+    }
+
+    public void setRandomConsumerLatencyInMicroseconds(String randomConsumerLatencyInMicroseconds) {
+        this.randomConsumerLatencyInMicroseconds = randomConsumerLatencyInMicroseconds;
     }
 
     private interface Checker {
